@@ -9,35 +9,41 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
+import mpl_toolkits.mplot3d as a3
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+
 
 def read_in_grid(filename):
-	grid_file=open(filename,'r')
-	line=grid_file.readline()
-	X=re.findall(r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?", line)
-	line=grid_file.readline()
-	Y=re.findall(r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?", line)
-	size_x=int(X[0])
-	size_y=int(Y[0])
-	XYZ= np.zeros((size_x,size_y,3))
-	range_x=[float(X[1]),float(X[2])]
-	range_y=[float(Y[1]),float(Y[2])]
-	
-	xmesh=np.reshape(((2*np.arange(size_x)+0.5)/(2*size_x)*
-		(range_x[1]-range_x[0])+range_x[0]),(1,size_x))
-		
-	ymesh=np.reshape(((2*np.arange(size_y)+0.5)/(2*size_y)*
-		(range_y[1]-range_y[0])+range_y[0]),(1,size_y))	
-		
-	XYZ[:,:,0]=xmesh.T*np.matrix(np.ones((1,size_y)))
-	XYZ[:,:,1]=np.matrix(np.ones((1,size_x))).T*ymesh
-	line=grid_file.readline()
-	for i in range(size_y):
-		line=grid_file.readline()
-		XYZ[:,i,2] = [float(x) for x in line.split()]
-	grid_file.close()
-	return XYZ
+    grid_file=open(filename,'r')
+    line=grid_file.readline()
+    X=re.findall(r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?", line)
+    line=grid_file.readline()
+    Y=re.findall(r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?", line)
+    size_x=int(X[0])
+    size_y=int(Y[0])
+    XYZ= np.zeros((size_x,size_y,3))
+    range_x=[float(X[1]),float(X[2])]
+    range_y=[float(Y[1]),float(Y[2])]
+    dx=(range_x[1]-range_x[0])/size_x
+    dy=(range_y[1]-range_y[0])/size_y
+    xvec=np.linspace(range_x[0]+.5*dx,range_x[1]-.5*dx,size_x)
+    yvec=np.linspace(range_y[0]+.5*dy,range_y[1]-.5*dy,size_y)
+    xv,yv=np.meshgrid(xvec, yvec, sparse=False, indexing='ij')
+#    xmesh=np.reshape(((2*np.arange(size_x)+0.5)/(2*size_x)*
+#		(range_x[1]-range_x[0])+range_x[0]),(1,size_x))
+#    ymesh=np.reshape(((2*np.arange(size_y)+0.5)/(2*size_y)*
+#    (range_y[1]-range_y[0])+range_y[0]),(1,size_y))
+#    XYZ[:,:,0]=xmesh.T*np.matrix(np.ones((1,size_y)))
+#    XYZ[:,:,1]=np.matrix(np.ones((1,size_x))).T*ymesh
+    XYZ[:,:,0]=xv
+    XYZ[:,:,1]=yv
+    line=grid_file.readline()
+    for i in range(size_y):
+        line=grid_file.readline()
+        XYZ[:,i,2] = [float(x) for x in line.split()]
+        
+    grid_file.close()
+    return XYZ
 
 
 
@@ -53,110 +59,33 @@ X=XYZ[:,:,0]
 Y=XYZ[:,:,1]
 Z=XYZ[:,:,2]
 XYZ=[]
-xminmax=[np.min(X[:,0]),np.max(X[:,0])]
-yminmax=[np.min(Y[0,:]),np.max(Y[0,:])]
+
+cmap=matplotlib.cm.jet
+
+norm = matplotlib.colors.Normalize(vmin=-4, vmax=np.log10(np.max(h[:,:])))
+m = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+h[h<1e-4]=1e-4
+
+rang=m.to_rgba(np.log10(h))
 Nx=len(X[:,0])
 Ny=len(Y[0,:])
-Nquads=(Nx-1)*(Ny-1)
-quads=np.zeros((4,Nx-1,Ny-1))
-patches = []
-fig, ax = plt.subplots()
-cmap=matplotlib.cm.jet
-#a=np.floor(np.log10(np.min(h[:,:])))
-b=np.ceil(np.log10(np.max(h[:,:])))
-#b=max(h[:,:])
-minmaxh=np.power(10,[-2,b])
-#norm = matplotlib.colors.Normalize(vmin=minmaxh[0], vmax=minmaxh[1])
-norm = matplotlib.colors.Normalize(vmin=np.min(h[:,:]), vmax=np.max(h[:,:]))
-m = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
- 
-for i in range(Nx-1):
-	for j in range(Ny-1):
-         x1=X[i,j]
-         x2=X[i+1,j]
-         y1=Y[i,j]
-         y2=Y[i,j+1]
-         points=[[x1,y1],[x2,y1],[x2,y2],[x1,y2]]
-#         if h[i,j]==0:
-#             h[i,j]=.01             
-         polygon = plt.Polygon(points,facecolor=m.to_rgba(h[i,j]))
-         patches.append(polygon)
-         
-#p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
-p = PatchCollection(patches,match_original=True)         
-print len(patches)
-colors = [0,1,2,1]
-#100*np.random.rand(len(patches))
-#p.set_array(np.array(colors))
+for i in range(Nx):
+    for j in range (Ny):
+        if np.array_equal(rang[i,j,:],[0,0,.5,1]):
+            rang[i,j,:]=[1,1,1,1]
+            
+fig = plt.figure(frameon=False)
+ax = fig.gca(projection='3d')
+surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1,
+                       facecolors=rang,
+                       linewidth=0, antialiased=False)
 
-ax.add_collection(p)
-ax.relim()
-ax.set_xlim([xminmax[0], xminmax[1]])
-ax.set_ylim([yminmax[0], yminmax[1]])
-plt.show()    
-	
+#ax.zaxis.set_major_locator(LinearLocator(5))
+#ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
-#Polygon
-#fig, ax = plt.subplots()
-#patches = []
-#
-#for i in range(Nx-1):
-#	for j in range(Ny-1):
-#         polygon = Polygon([X[i,j],X[i+1,j],Y[i,j],Y[i,j+1]], True)
-#         patches.append(polygon)
-#
-#p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
-#
-#colors = 100*np.random.rand(len(patches))
-#p.set_array(np.array(colors))
-#
-#ax.add_collection(p)
-#
-#plt.show()
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-#quads[0,:,:]=
-#quads[1,:,:]=
-#quads[2,:,:]=
-#quads[3,:,:]=
+ax.view_init(elev=0,azim=0)
+ax.axis('off')
+#fig.colorbar(surf, shrink=0.5, aspect=5)
+plt.savefig('foo.png')
+plt.show()
+
