@@ -28,15 +28,14 @@ def read_in_grid(filename):
     dy=(range_y[1]-range_y[0])/size_y
     xvec=np.linspace(range_x[0]+.5*dx,range_x[1]-.5*dx,size_x)
     yvec=np.linspace(range_y[0]+.5*dy,range_y[1]-.5*dy,size_y)
-    xv,yv=np.meshgrid(xvec, yvec, sparse=False, indexing='ij')
+    XYZ[:,:,0],XYZ[:,:,1]=np.meshgrid(xvec, yvec, sparse=False, indexing='ij')
 #    xmesh=np.reshape(((2*np.arange(size_x)+0.5)/(2*size_x)*
 #		(range_x[1]-range_x[0])+range_x[0]),(1,size_x))
 #    ymesh=np.reshape(((2*np.arange(size_y)+0.5)/(2*size_y)*
 #    (range_y[1]-range_y[0])+range_y[0]),(1,size_y))
 #    XYZ[:,:,0]=xmesh.T*np.matrix(np.ones((1,size_y)))
 #    XYZ[:,:,1]=np.matrix(np.ones((1,size_x))).T*ymesh
-    XYZ[:,:,0]=xv
-    XYZ[:,:,1]=yv
+
     line=grid_file.readline()
     for i in range(size_y):
         line=grid_file.readline()
@@ -55,20 +54,15 @@ h=xyh[:,:,2]
 xyh=[]
 maxh=np.max(h)
 XYZ=read_in_grid('elevation.grid');
-X=XYZ[:,:,0]
-Y=XYZ[:,:,1]
-Z=XYZ[:,:,2]
-XYZ=[]
 
 cmap=matplotlib.cm.jet
-
 norm = matplotlib.colors.Normalize(vmin=-4, vmax=np.log10(np.max(h[:,:])))
 m = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
 h[h<1e-4]=1e-4
 
 rang=m.to_rgba(np.log10(h))
-Nx=len(X[:,0])
-Ny=len(Y[0,:])
+Nx=len(XYZ[:,0,0])
+Ny=len(XYZ[0,:,0])
 for i in range(Nx):
     for j in range (Ny):
         if np.array_equal(rang[i,j,:],[0,0,.5,1]):
@@ -76,7 +70,7 @@ for i in range(Nx):
             
 fig = plt.figure(frameon=False)
 ax = fig.gca(projection='3d')
-surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1,
+surf = ax.plot_surface(XYZ[:,:,0], XYZ[:,:,1], XYZ[:,:,2], rstride=1, cstride=1,
                        facecolors=rang,
                        linewidth=0, antialiased=False)
 
